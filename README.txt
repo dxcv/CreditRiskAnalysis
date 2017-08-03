@@ -4,4 +4,4 @@ Designed workflow is based on excel spreadsheet to rate product by consuming its
 
 Data source is from Wind online API data or the database deployed in intranet.
 
-Project starts from Aug 1, 2017
+Project starts from Aug 1, 2017.
