@@ -1,22 +1,38 @@
-from BondRating import *
+
+from BondRatingNew import *
 from WindPy import w
 import pandas as pd
-from datetime import *
 w.start()
-myfun = BondRating()
-df = pd.read_excel("Table1.xlsx")
-myfun.PastData("136164.SH")
-print(myfun.score(df))
 
-# print(a)
-#
-# print(df[15:16][2.5])
-#
-# print(a > np.array(df[15:16][2.5])*100)
-# print(a < np.array(df[15:16][3]*100))
-# a1 = a > np.array(df[15:16][2.5])*100
-# a2 = a < np.array(df[15:16][3]*100)
-# b = a
-# b[(a > np.array(df[15:16][2.5])*100) & (a < np.array(df[15:16][3]*100))] = 2.5
-# print(b)
+# BondRatingNew: the function to get the rate, including
+# .PastData: raw data--> df_temp, get the data of each factor
+# .score: df_temp--> df_score, get the score of each factor
+# .rate: df_score--> df_rate, get the final rate of the bond
+
+# RateFunNew: used in BondRatingNew.score, data-->score
+# Table1.xlsx: the score criterion used in RateFunNew
+# OtherScore.xlsx: other score
+
+#Score2Rate: rate criterion, used in BondRatingNew.rate, score-->rate
+#WeightTable.xlsx: used in BondRatingNew.rate, score-->rate
+
+
+myfun = BondRatingNew()
+
+myfun.PastData("136164.SH")
+
+ScoringCriterionTable = pd.read_excel("Table1.xlsx")
+OtherScore = pd.read_excel("OtherScore.xlsx")
+
+myfun.score(ScoringCriterionTable, OtherScore)
+
+WeightTable = pd.read_excel("Table2.xlsx")
+print(myfun.rate(WeightTable))
+
+
+
+
+
+
+
 
