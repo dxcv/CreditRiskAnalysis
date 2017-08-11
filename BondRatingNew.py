@@ -7,6 +7,7 @@ import pandas as pd
 from RateFunNew import *
 from RateFunSpecial import *
 from Score2Rate import *
+from collections import Counter
 
 #PastData: Get the data from Wind online API data. Return df_temp
 #score: Get the score according to the criterion and the df_temp. Return df_score
@@ -31,6 +32,16 @@ class BondRatingNew():
         index = background.Fields
         columns = range(background.Times[0].year, background.Times[len(background.Times) - 1].year + 1)
         df_RawData = pd.DataFrame(data=data, index=index, columns=columns)
+
+        #columns: select columns not nan
+        columns = []
+        for i in range(0, df_RawData.shape[1]):
+            if Counter(np.isnan(df_RawData.iloc[:, i]))[False] != 0:
+                columns.append(df_RawData.columns[i])
+
+        df_RawData = df_RawData[columns]
+
+
         #get column numbers
         col_num = df_RawData.shape[1]
 
@@ -46,17 +57,9 @@ class BondRatingNew():
         df_temp.ix["总资产规模"] = df_RawData.ix["TOT_ASSETS"][2:] / unit
         df_temp.ix["净资产规模"] = df_RawData.ix["TOT_EQUITY"][2:] / unit
 
-        df_temp.ix["净资产变化率"] = np.empty(col_num - 2)
-        for i in range(0, col_num - 2):
-            if df_RawData.ix["TOT_EQUITY"].iloc[i+1] == 0:
-                df_temp.ix["净资产变化率"].iloc[i] = 'NaN'
-            else:
-                df_temp.ix["净资产变化率"].iloc[i] = (df_RawData.ix["TOT_EQUITY"].iloc[i+2] - df_RawData.ix["TOT_EQUITY"].iloc[i+1]
-                                                )/df_RawData.ix["TOT_EQUITY"].iloc[i+1]
-
         # 正在改
-        # df_temp.ix["净资产变化率"] = (np.array(df_RawData.ix["TOT_EQUITY"][2:]) - np.array(df_RawData.ix["TOT_EQUITY"][1:col_num - 1]))/ \
-        #                        np.array(df_RawData.ix["TOT_EQUITY"][1:col_num - 1])
+        df_temp.ix["净资产变化率"] = (np.array(df_RawData.ix["TOT_EQUITY"][2:]) - np.array(df_RawData.ix["TOT_EQUITY"][1:col_num - 1]))/ \
+                               np.array(df_RawData.ix["TOT_EQUITY"][1:col_num - 1])
 
 
         df_temp.ix["营业收入"] = df_RawData.ix["TOT_OPER_REV"][2:] / unit
@@ -74,11 +77,9 @@ class BondRatingNew():
         df_temp.ix["净利率"] = (df_RawData.ix["NET_PROFIT_IS"]/df_RawData.ix["OPER_REV"])[2:]
 
         df_temp.ix["过去三年毛利率标准差"] = np.empty(col_num - 2)
+
         for i in range(0, col_num - 2):
-            if df_RawData.ix["OPER_REV"].iloc[i + 2] == 0:
-                df_temp.ix["过去三年毛利率标准差"].iloc[i] = 'NaN'
-            else:
-                df_temp.ix["过去三年毛利率标准差"].iloc[i] = np.std(df_RawData.ix["OPER_REV"].iloc[i:i + 3], ddof=1) / np.mean(
+            df_temp.ix["过去三年毛利率标准差"].iloc[i] = np.std(df_RawData.ix["OPER_REV"].iloc[i:i + 3], ddof=1) / np.mean(
                     df_RawData.ix["OPER_REV"].iloc[i:i + 3])
 
         df_temp.ix["毛利率变化值"] = np.array(df_temp.ix["毛利率"]) - np.array(1 - (df_RawData.ix["OPER_COST"] + df_RawData.ix["TAXES_SURCHARGES_OPS"]) / df_RawData.ix["OPER_REV"])[1:col_num-1]
@@ -123,10 +124,7 @@ class BondRatingNew():
 
         df_temp.ix["三年经营现金流波动"] = np.empty(col_num - 2)
         for i in range(0, col_num - 2):
-            if df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"].iloc[i + 2] == 0:
-                df_temp.ix["三年经营现金流波动"].iloc[i] = 'NaN'
-            else:
-                df_temp.ix["三年经营现金流波动"].iloc[i] = np.std(df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"].iloc[i: i + 3],
+            df_temp.ix["三年经营现金流波动"].iloc[i] = np.std(df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"].iloc[i: i + 3],
                                                          ddof=1) / np.mean(
                     df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"].iloc[i:i + 3])
 
@@ -162,13 +160,15 @@ class BondRatingNew():
 
     def score(self, ScoringCriterion, OtherScore):
         index = self.df_temp.index
-        df_score = pd.DataFrame(columns=self.df_temp.columns, index = index)
+        columns = self.df_temp.columns
+        df_score = pd.DataFrame(columns=columns, index = index)
         for i in range(0, index.size):
             df_score.ix[index[i]] = RateFunNew(self.df_temp.ix[index[i]], ScoringCriterion.ix[index[i]])
         #merge df_score and OtherScore
-        df_score = pd.concat([df_score, OtherScore])
+        df_score = pd.concat([df_score, OtherScore])[columns]
 
         self.df_score = df_score
+
         return self
 
     def rate(self, weight):
@@ -182,7 +182,12 @@ class BondRatingNew():
         df_rate.ix["内部评级-主体"] = Score2Rate(df_rate.ix["内部得分-主体"])
 
 
-
+        #write to excel
+        writer = pd.ExcelWriter('outTest.xlsx')
+        self.df_temp.to_excel(writer, 'Temp', index=True)
+        self.df_score.to_excel(writer, 'Score', index = True)
+        self.df_score.to_excel(writer, 'Rate', index=True)
+        writer.save()
 
         return df_rate
 
