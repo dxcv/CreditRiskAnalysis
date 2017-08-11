@@ -20,8 +20,8 @@ w.start()
 myfun = BondRatingNew()
 
 # myfun.PastData("136164.SH")
-# myfun.PastData("136134.SH")
-myfun.PastData("1182035.IB")
+myfun.PastData("136134.SH")
+# myfun.PastData("1182035.IB")
 
 ScoringCriterionTable = pd.read_excel("Table1.xlsx")
 OtherScore = pd.read_excel("OtherScore.xlsx")

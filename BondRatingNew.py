@@ -51,96 +51,107 @@ class BondRatingNew():
 
         #build a new DF df_temp--data to score,
         #datetime: column[2:]
-        df_temp = pd.DataFrame(columns=columns[2:])
-        df_temp.ix["大股东比例"] = df_RawData.ix["HOLDER_PCT"][2:] / 100
-        df_temp.ix["母公司利润占比"] = df_RawData.ix["NP_BELONGTO_PARCOMSH"] / df_RawData.ix["NET_PROFIT_IS"][2:]
-        df_temp.ix["总资产规模"] = df_RawData.ix["TOT_ASSETS"][2:] / unit
-        df_temp.ix["净资产规模"] = df_RawData.ix["TOT_EQUITY"][2:] / unit
+        #start_col: the start column in df_temp
+        #if col_num >=2, datetime: column[2:]
+        #if col_num < 2, datetime: column[2:]
+        start_col = min(2, col_num)
+        df_temp = pd.DataFrame(columns=columns[start_col:])
+        print(columns[start_col:])
+        df_temp.ix["大股东比例"] = df_RawData.ix["HOLDER_PCT"][start_col:] / 100
+        df_temp.ix["母公司利润占比"] = df_RawData.ix["NP_BELONGTO_PARCOMSH"] / df_RawData.ix["NET_PROFIT_IS"][start_col:]
+        df_temp.ix["总资产规模"] = df_RawData.ix["TOT_ASSETS"][start_col:] / unit
+        df_temp.ix["净资产规模"] = df_RawData.ix["TOT_EQUITY"][start_col:] / unit
 
         # 正在改
-        df_temp.ix["净资产变化率"] = (np.array(df_RawData.ix["TOT_EQUITY"][2:]) - np.array(df_RawData.ix["TOT_EQUITY"][1:col_num - 1]))/ \
-                               np.array(df_RawData.ix["TOT_EQUITY"][1:col_num - 1])
+        df_temp.ix["净资产变化率"] = (np.array(df_RawData.ix["TOT_EQUITY"][start_col:]) - np.array(df_RawData.ix["TOT_EQUITY"][start_col - 1 : col_num - 1]))/ \
+                               np.array(df_RawData.ix["TOT_EQUITY"][start_col - 1 : col_num - 1])
 
 
-        df_temp.ix["营业收入"] = df_RawData.ix["TOT_OPER_REV"][2:] / unit
-        df_temp.ix["净利润"] = df_RawData.ix["NET_PROFIT_IS"][2:] / unit
-        df_temp.ix["营业利润"] = df_RawData.ix["OPPROFIT"][2:] / unit
+        df_temp.ix["营业收入"] = df_RawData.ix["TOT_OPER_REV"][start_col:] / unit
+        df_temp.ix["净利润"] = df_RawData.ix["NET_PROFIT_IS"][start_col:] / unit
+        df_temp.ix["营业利润"] = df_RawData.ix["OPPROFIT"][start_col:] / unit
         # Attention: str--->float
         df_temp.ix["EBITDA"] = (df_RawData.ix["FIN_EXP_IS"] + df_RawData.ix["TOT_PROFIT"] + df_RawData.ix["DEPR_FA_COGA_DPBA"] + \
             df_RawData.ix["AMORT_INTANG_ASSETS"] + df_RawData.ix["AMORT_LT_DEFERRED_EXP"] + df_RawData.ix["DECR_DEFERRED_EXP"] + \
-            df_RawData.ix["INCR_ACC_EXP"] + df_RawData.ix["LOSS_DISP_FIOLTA"] + df_RawData.ix["LOSS_FV_CHG"])[2:]/unit
+            df_RawData.ix["INCR_ACC_EXP"] + df_RawData.ix["LOSS_DISP_FIOLTA"] + df_RawData.ix["LOSS_FV_CHG"])[start_col:]/unit
 
-        df_temp.ix["经营现金流净额"] = df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"][2:] / unit
+        df_temp.ix["经营现金流净额"] = df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"][start_col:] / unit
 
         # 盈利指标
-        df_temp.ix["毛利率"] = (1 - (df_RawData.ix["OPER_COST"] + df_RawData.ix["TAXES_SURCHARGES_OPS"]) / df_RawData.ix["OPER_REV"])[2:]
-        df_temp.ix["净利率"] = (df_RawData.ix["NET_PROFIT_IS"]/df_RawData.ix["OPER_REV"])[2:]
+        df_temp.ix["毛利率"] = (1 - (df_RawData.ix["OPER_COST"] + df_RawData.ix["TAXES_SURCHARGES_OPS"]) / df_RawData.ix["OPER_REV"])[start_col:]
+        df_temp.ix["净利率"] = (df_RawData.ix["NET_PROFIT_IS"]/df_RawData.ix["OPER_REV"])[start_col:]
 
         df_temp.ix["过去三年毛利率标准差"] = np.empty(col_num - 2)
 
-        for i in range(0, col_num - 2):
-            df_temp.ix["过去三年毛利率标准差"].iloc[i] = np.std(df_RawData.ix["OPER_REV"].iloc[i:i + 3], ddof=1) / np.mean(
+        if start_col == 1:
+            df_temp.ix["过去三年毛利率标准差"] = np.std(df_RawData.ix["OPER_REV"].iloc[0:2], ddof=1)/np.mean(
+                df_RawData.ix["OPER_REV"].iloc[0:2])
+        else:
+            df_temp.ix["过去三年毛利率标准差"] = np.empty(col_num - 2)
+            for i in range(0, col_num - 2):
+                df_temp.ix["过去三年毛利率标准差"].iloc[i] = np.std(df_RawData.ix["OPER_REV"].iloc[i:i + 3], ddof=1) / np.mean(
                     df_RawData.ix["OPER_REV"].iloc[i:i + 3])
 
-        df_temp.ix["毛利率变化值"] = np.array(df_temp.ix["毛利率"]) - np.array(1 - (df_RawData.ix["OPER_COST"] + df_RawData.ix["TAXES_SURCHARGES_OPS"]) / df_RawData.ix["OPER_REV"])[1:col_num-1]
-        df_temp.ix["ROE"] = df_RawData.ix["ROE"][2:]/100
+        df_temp.ix["毛利率变化值"] = np.array(df_temp.ix["毛利率"]) - np.array(1 - (df_RawData.ix["OPER_COST"] + df_RawData.ix["TAXES_SURCHARGES_OPS"]) / df_RawData.ix["OPER_REV"])[start_col - 1:col_num-1]
+        df_temp.ix["ROE"] = df_RawData.ix["ROE"][start_col:]/100
 
         df_temp.ix["(现金-短债)/净资产, 含应付应收"] = (((df_RawData.ix["MONETARY_CAP"] + df_RawData.ix["TRADABLE_FIN_ASSETS"]
         + df_RawData.ix["NOTES_RCV"] + df_RawData.ix["ACCT_RCV"] + df_RawData.ix["NON_CUR_ASSETS_DUE_WITHIN_1Y"])
         - (df_RawData.ix["ST_BORROW"] + df_RawData.ix["BORROW_CENTRAL_BANK"] + df_RawData.ix["TRADABLE_FIN_LIAB"]
            + df_RawData.ix["NOTES_PAYABLE"] + df_RawData.ix["ACCT_PAYABLE"] + df_RawData.ix["HANDLING_CHARGES_COMM_PAYABLE"]
            + df_RawData.ix["EMPL_BEN_PAYABLE"] + df_RawData.ix["TAXES_SURCHARGES_PAYABLE"] + df_RawData.ix["INT_PAYABLE"]
-           + df_RawData.ix["OTH_PAYABLE"] + df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"]))/df_RawData.ix["TOT_EQUITY"])[2:]
+           + df_RawData.ix["OTH_PAYABLE"] + df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"]))/df_RawData.ix["TOT_EQUITY"])[start_col:]
 
         df_temp.ix["(现金-短债)/净资产，含有息债务"] = (((df_RawData.ix["MONETARY_CAP"] + df_RawData.ix["TRADABLE_FIN_ASSETS"]
                                             + df_RawData.ix["NON_CUR_ASSETS_DUE_WITHIN_1Y"])
                                            - (df_RawData.ix["ST_BORROW"] + df_RawData.ix["BORROW_CENTRAL_BANK"]
-                                              +df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"]))/df_RawData.ix["TOT_EQUITY"])[2:]
+                                              +df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"]))/df_RawData.ix["TOT_EQUITY"])[start_col:]
 
         df_temp.ix["有息负债率"] = ((df_RawData.ix["ST_BORROW"] + df_RawData.ix["BORROW_CENTRAL_BANK"]
-                               + df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"] + df_RawData.ix["LT_BORROW"] + df_RawData.ix["BONDS_PAYABLE"])/df_RawData.ix["TOT_ASSETS"])[2:]
+                               + df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"] + df_RawData.ix["LT_BORROW"] + df_RawData.ix["BONDS_PAYABLE"])/df_RawData.ix["TOT_ASSETS"])[start_col:]
 
-        df_temp.ix["有息负债变化值"] = np.array((df_RawData.ix["ST_BORROW"] + df_RawData.ix["BORROW_CENTRAL_BANK"] +
-                                           df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"] + df_RawData.ix["LT_BORROW"] +
-                                           df_RawData.ix["BONDS_PAYABLE"]) / df_RawData.ix["TOT_ASSETS"])[
-                                 2:] - np.array((df_RawData.ix["ST_BORROW"] + df_RawData.ix["BORROW_CENTRAL_BANK"] +
-                                                 df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"] + df_RawData.ix[
-                                                     "LT_BORROW"] + df_RawData.ix["BONDS_PAYABLE"]) / df_RawData.ix[
-                                                    "TOT_ASSETS"])[1:col_num - 1]
 
-        df_temp.ix["资产负债率"] = df_RawData.ix["TOT_LIAB"] / df_RawData.ix["TOT_LIAB_SHRHLDR_EQY"][2:]
-        df_temp.ix["三费费率"] = (df_RawData.ix["SELLING_DIST_EXP"] + df_RawData.ix["GERL_ADMIN_EXP"] + df_RawData.ix["FIN_EXP_IS"]) / df_RawData.ix["OPER_REV"][2:]
+        df_temp.ix["有息负债变化值"] = np.array(df_temp.ix["有息负债率"])\
+                                - np.array((df_RawData.ix["ST_BORROW"] +df_RawData.ix["BORROW_CENTRAL_BANK"] +
+                                            df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"] +df_RawData.ix["LT_BORROW"] +
+                                            df_RawData.ix["BONDS_PAYABLE"])/ df_RawData.ix["TOT_ASSETS"])[start_col - 1 : col_num - 1]
+
+        df_temp.ix["资产负债率"] = df_RawData.ix["TOT_LIAB"] / df_RawData.ix["TOT_LIAB_SHRHLDR_EQY"][start_col:]
+        df_temp.ix["三费费率"] = (df_RawData.ix["SELLING_DIST_EXP"] + df_RawData.ix["GERL_ADMIN_EXP"] + df_RawData.ix["FIN_EXP_IS"]) / df_RawData.ix["OPER_REV"][start_col:]
 
         df_temp.ix["固定资产/总资产"] = (df_RawData.ix["LONG_TERM_EQY_INVEST"] + df_RawData.ix["INVEST_REAL_ESTATE"] + df_RawData.ix["FIX_ASSETS"]
                                   + df_RawData.ix["CONST_IN_PROG"] + df_RawData.ix["PROJ_MATL"] + df_RawData.ix["FIX_ASSETS_DISP"]
                                   + df_RawData.ix["PRODUCTIVE_BIO_ASSETS"] + df_RawData.ix["OIL_AND_NATURAL_GAS_ASSETS"] + df_RawData.ix["INTANG_ASSETS"]
-                                  + df_RawData.ix["OTH_NON_CUR_ASSETS"])/df_RawData.ix["TOT_ASSETS"][2:]
+                                  + df_RawData.ix["OTH_NON_CUR_ASSETS"])/df_RawData.ix["TOT_ASSETS"][start_col:]
 
         df_temp.ix["经营现金流/总债务"] = (df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"]/(df_RawData.ix["ST_BORROW"] + df_RawData.ix["BORROW_CENTRAL_BANK"] + df_RawData.ix["TRADABLE_FIN_LIAB"]\
                                   + df_RawData.ix["NOTES_PAYABLE"] + df_RawData.ix["ACCT_PAYABLE"] + df_RawData.ix["HANDLING_CHARGES_COMM_PAYABLE"]\
                                   + df_RawData.ix["EMPL_BEN_PAYABLE"] + df_RawData.ix["TAXES_SURCHARGES_PAYABLE"] + df_RawData.ix["INT_PAYABLE"]\
                                   + df_RawData.ix["OTH_PAYABLE"] + df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"] + df_RawData.ix["LT_BORROW"] \
-                                   + df_RawData.ix["BONDS_PAYABLE"] + df_RawData.ix["LT_PAYABLE"] + df_RawData.ix["SPECIFIC_ITEM_PAYABLE"]))[2:]
+                                   + df_RawData.ix["BONDS_PAYABLE"] + df_RawData.ix["LT_PAYABLE"] + df_RawData.ix["SPECIFIC_ITEM_PAYABLE"]))[start_col:]
 
-        df_temp.ix["三年经营现金流波动"] = np.empty(col_num - 2)
-        for i in range(0, col_num - 2):
-            df_temp.ix["三年经营现金流波动"].iloc[i] = np.std(df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"].iloc[i: i + 3],
-                                                         ddof=1) / np.mean(
-                    df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"].iloc[i:i + 3])
+
+        if start_col == 1:
+            df_temp.ix["三年经营现金流波动"] = np.std(df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"].iloc[0: 2],
+                                             ddof=1) / np.mean( df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"].iloc[0:2])
+        else:
+            df_temp.ix["三年经营现金流波动"] = np.empty(col_num - 2)
+            for i in range(0, col_num - 2):
+                df_temp.ix["三年经营现金流波动"].iloc[i] = np.std(df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"].iloc[i: i + 3],
+                                                         ddof=1) / np.mean(df_RawData.ix["NET_CASH_FLOWS_OPER_ACT"].iloc[i:i + 3])
 
         df_temp.ix["EBITDA/总债务"] = (df_temp.ix["EBITDA"]/((df_RawData.ix["ST_BORROW"] + df_RawData.ix["BORROW_CENTRAL_BANK"] + df_RawData.ix["TRADABLE_FIN_LIAB"]\
                                   + df_RawData.ix["NOTES_PAYABLE"] + df_RawData.ix["ACCT_PAYABLE"] + df_RawData.ix["HANDLING_CHARGES_COMM_PAYABLE"]\
                                   + df_RawData.ix["EMPL_BEN_PAYABLE"] + df_RawData.ix["TAXES_SURCHARGES_PAYABLE"] + df_RawData.ix["INT_PAYABLE"]\
                                   + df_RawData.ix["OTH_PAYABLE"] + df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"] + df_RawData.ix["LT_BORROW"] \
-                                   + df_RawData.ix["BONDS_PAYABLE"] + df_RawData.ix["LT_PAYABLE"] + df_RawData.ix["SPECIFIC_ITEM_PAYABLE"])/unit))[2:]
+                                   + df_RawData.ix["BONDS_PAYABLE"] + df_RawData.ix["LT_PAYABLE"] + df_RawData.ix["SPECIFIC_ITEM_PAYABLE"])/unit))[start_col:]
 
-        df_temp.ix["固定资产周转率"] = df_RawData.ix["FATURN"][2:]
-        df_temp.ix["存货周转天数"] = df_RawData.ix["INVTURNDAYS"][2:]
-        df_temp.ix["应收账款周转天数"] = 360 / (df_RawData.ix["OPER_REV"][2:] / ((np.array(
-            df_RawData.ix["ACCT_RCV"][1:col_num - 1] + df_RawData.ix["OTH_RCV"][1:col_num - 1] + df_RawData.ix[
-                                                                                                     "LONG_TERM_REC"][
-                                                                                                 1:col_num - 1]) + np.array(
-            df_RawData.ix["ACCT_RCV"][2:] + df_RawData.ix["OTH_RCV"][2:] + df_RawData.ix["LONG_TERM_REC"][2:])) / 2))
+        df_temp.ix["固定资产周转率"] = df_RawData.ix["FATURN"][start_col:]
+        df_temp.ix["存货周转天数"] = df_RawData.ix["INVTURNDAYS"][start_col:]
+        df_temp.ix["应收账款周转天数"] = 360 / (df_RawData.ix["OPER_REV"][start_col:] / ((np.array(
+            df_RawData.ix["ACCT_RCV"][start_col - 1:col_num - 1] + df_RawData.ix["OTH_RCV"][start_col - 1:col_num - 1] +
+            df_RawData.ix["LONG_TERM_REC"][start_col - 1:col_num - 1]) + np.array(
+            df_RawData.ix["ACCT_RCV"][start_col:] + df_RawData.ix["OTH_RCV"][start_col:] + df_RawData.ix["LONG_TERM_REC"][start_col:])) / 2))
 
         #####除2013， 2014年外不同
         df_temp.ix["未使用授信/总债务"] = w.wss(s_info_code, "credit_lineunused").Data[0][0]/\
@@ -151,7 +162,7 @@ class BondRatingNew():
                                     + df_RawData.ix["INT_PAYABLE"] + df_RawData.ix["OTH_PAYABLE"]
                                     + df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"] + df_RawData.ix["LT_BORROW"]
                                     + df_RawData.ix["BONDS_PAYABLE"] + df_RawData.ix["LT_PAYABLE"] +
-                                    df_RawData.ix["SPECIFIC_ITEM_PAYABLE"])/unit)[2:]
+                                    df_RawData.ix["SPECIFIC_ITEM_PAYABLE"])/unit)[start_col:]
 
 
         self.df_temp = df_temp
