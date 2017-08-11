@@ -29,7 +29,7 @@ class BondRatingNew():
 
         data = background.Data
         index = background.Fields
-        columns = [2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016]
+        columns = range(background.Times[0].year, background.Times[len(background.Times) - 1].year + 1)
         df_RawData = pd.DataFrame(data=data, index=index, columns=columns)
         #get column numbers
         col_num = df_RawData.shape[1]
@@ -38,8 +38,9 @@ class BondRatingNew():
         df_RawData = df_RawData.replace('Nan',0)
         unit = 1e8
 
-        #build a new DF df_temp--data to score, from 2009 to 2016
-        df_temp = pd.DataFrame(columns=[2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016])
+        #build a new DF df_temp--data to score,
+        #datetime: column[2:]
+        df_temp = pd.DataFrame(columns=columns[2:])
         df_temp.ix["大股东比例"] = df_RawData.ix["HOLDER_PCT"][2:] / 100
         df_temp.ix["母公司利润占比"] = df_RawData.ix["NP_BELONGTO_PARCOMSH"] / df_RawData.ix["NET_PROFIT_IS"][2:]
         df_temp.ix["总资产规模"] = df_RawData.ix["TOT_ASSETS"][2:] / unit
@@ -161,7 +162,7 @@ class BondRatingNew():
 
     def score(self, ScoringCriterion, OtherScore):
         index = self.df_temp.index
-        df_score = pd.DataFrame(columns=[2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016], index = index)
+        df_score = pd.DataFrame(columns=self.df_temp.columns, index = index)
         for i in range(0, index.size):
             df_score.ix[index[i]] = RateFunNew(self.df_temp.ix[index[i]], ScoringCriterion.ix[index[i]])
         #merge df_score and OtherScore
@@ -171,8 +172,7 @@ class BondRatingNew():
         return self
 
     def rate(self, weight):
-        columns = [2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016]
-        df_rate = pd.DataFrame(columns = columns)
+        df_rate = pd.DataFrame(columns = self.df_score.columns)
         self.df_score = self.df_score.reindex(weight.index)
         df_rate.ix["内部得分-债项"] = np.dot(weight.T, self.df_score)[0]
         df_rate.ix["内部评级-债项"] = Score2Rate(df_rate.ix["内部得分-债项"])
