@@ -56,13 +56,12 @@ class BondRatingNew():
         #if col_num < 2, datetime: column[2:]
         start_col = min(2, col_num)
         df_temp = pd.DataFrame(columns=columns[start_col:])
-        print(columns[start_col:])
+
         df_temp.ix["大股东比例"] = df_RawData.ix["HOLDER_PCT"][start_col:] / 100
         df_temp.ix["母公司利润占比"] = df_RawData.ix["NP_BELONGTO_PARCOMSH"] / df_RawData.ix["NET_PROFIT_IS"][start_col:]
+
         df_temp.ix["总资产规模"] = df_RawData.ix["TOT_ASSETS"][start_col:] / unit
         df_temp.ix["净资产规模"] = df_RawData.ix["TOT_EQUITY"][start_col:] / unit
-
-        # 正在改
         df_temp.ix["净资产变化率"] = (np.array(df_RawData.ix["TOT_EQUITY"][start_col:]) - np.array(df_RawData.ix["TOT_EQUITY"][start_col - 1 : col_num - 1]))/ \
                                np.array(df_RawData.ix["TOT_EQUITY"][start_col - 1 : col_num - 1])
 
@@ -153,7 +152,6 @@ class BondRatingNew():
             df_RawData.ix["LONG_TERM_REC"][start_col - 1:col_num - 1]) + np.array(
             df_RawData.ix["ACCT_RCV"][start_col:] + df_RawData.ix["OTH_RCV"][start_col:] + df_RawData.ix["LONG_TERM_REC"][start_col:])) / 2))
 
-        #####除2013， 2014年外不同
         df_temp.ix["未使用授信/总债务"] = w.wss(s_info_code, "credit_lineunused").Data[0][0]/\
                                   ((df_RawData.ix["ST_BORROW"] + df_RawData.ix["BORROW_CENTRAL_BANK"] +
                                     df_RawData.ix["TRADABLE_FIN_LIAB"] + df_RawData.ix["NOTES_PAYABLE"] +
