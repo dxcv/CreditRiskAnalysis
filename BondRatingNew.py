@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from RateFunNew import *
 from RateFunSpecial import *
+from RateFun_PctBelongToParcomsh import *
 from Score2Rate import *
 from collections import Counter
 
@@ -34,9 +35,10 @@ class BondRatingNew():
         df_RawData = pd.DataFrame(data=data, index=index, columns=columns)
 
         #columns: select columns not nan
+        #delete the columns with data <= 2
         columns = []
         for i in range(0, df_RawData.shape[1]):
-            if Counter(np.isnan(df_RawData.iloc[:, i]))[False] != 0:
+            if Counter(np.isnan(df_RawData.iloc[:, i]))[False] > 2:
                 columns.append(df_RawData.columns[i])
 
         df_RawData = df_RawData[columns]
@@ -152,15 +154,18 @@ class BondRatingNew():
             df_RawData.ix["LONG_TERM_REC"][start_col - 1:col_num - 1]) + np.array(
             df_RawData.ix["ACCT_RCV"][start_col:] + df_RawData.ix["OTH_RCV"][start_col:] + df_RawData.ix["LONG_TERM_REC"][start_col:])) / 2))
 
-        df_temp.ix["未使用授信/总债务"] = w.wss(s_info_code, "credit_lineunused").Data[0][0]/\
-                                  ((df_RawData.ix["ST_BORROW"] + df_RawData.ix["BORROW_CENTRAL_BANK"] +
-                                    df_RawData.ix["TRADABLE_FIN_LIAB"] + df_RawData.ix["NOTES_PAYABLE"] +
-                                    df_RawData.ix["ACCT_PAYABLE"] + df_RawData.ix["HANDLING_CHARGES_COMM_PAYABLE"]
-                                    + df_RawData.ix["EMPL_BEN_PAYABLE"] + df_RawData.ix["TAXES_SURCHARGES_PAYABLE"]
-                                    + df_RawData.ix["INT_PAYABLE"] + df_RawData.ix["OTH_PAYABLE"]
-                                    + df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"] + df_RawData.ix["LT_BORROW"]
-                                    + df_RawData.ix["BONDS_PAYABLE"] + df_RawData.ix["LT_PAYABLE"] +
-                                    df_RawData.ix["SPECIFIC_ITEM_PAYABLE"])/unit)[start_col:]
+        if w.wss(s_info_code, "credit_lineunused").Data[0][0] == None:
+            df_temp.ix["未使用授信/总债务"] = 0
+        else:
+            df_temp.ix["未使用授信/总债务"] = w.wss(s_info_code, "credit_lineunused").Data[0][0]/\
+                                      ((df_RawData.ix["ST_BORROW"] + df_RawData.ix["BORROW_CENTRAL_BANK"] +
+                                        df_RawData.ix["TRADABLE_FIN_LIAB"] + df_RawData.ix["NOTES_PAYABLE"] +
+                                        df_RawData.ix["ACCT_PAYABLE"] + df_RawData.ix["HANDLING_CHARGES_COMM_PAYABLE"]
+                                        + df_RawData.ix["EMPL_BEN_PAYABLE"] + df_RawData.ix["TAXES_SURCHARGES_PAYABLE"]
+                                        + df_RawData.ix["INT_PAYABLE"] + df_RawData.ix["OTH_PAYABLE"]
+                                        + df_RawData.ix["NON_CUR_LIAB_DUE_WITHIN_1Y"] + df_RawData.ix["LT_BORROW"]
+                                        + df_RawData.ix["BONDS_PAYABLE"] + df_RawData.ix["LT_PAYABLE"] +
+                                        df_RawData.ix["SPECIFIC_ITEM_PAYABLE"])/unit)[start_col:]
 
 
         self.df_temp = df_temp
@@ -173,6 +178,9 @@ class BondRatingNew():
         df_score = pd.DataFrame(columns=columns, index = index)
         for i in range(0, index.size):
             df_score.ix[index[i]] = RateFunNew(self.df_temp.ix[index[i]], ScoringCriterion.ix[index[i]])
+        df_score.ix["三年经营现金流波动"] = RateFunSpecial(self.df_temp.ix["三年经营现金流波动"], ScoringCriterion.ix["三年经营现金流波动"])
+        df_score.ix["母公司利润占比"] = RateFun_PctBelongToParcomsh(self.df_temp.ix["母公司利润占比"],
+                                                             self.df_temp.ix["净利润"], ScoringCriterion.ix["母公司利润占比"])
         #merge df_score and OtherScore
         df_score = pd.concat([df_score, OtherScore])[columns]
 
