@@ -4,6 +4,7 @@ w.start()
 
 import numpy as np
 import pandas as pd
+import time
 from RateFunNew import *
 from RateFunSpecial import *
 from RateFun_PctBelongToParcomsh import *
@@ -169,6 +170,7 @@ class BondRatingNew():
 
 
         self.df_temp = df_temp
+        self.s_info_code = s_info_code
 
         return self
 
@@ -203,8 +205,13 @@ class BondRatingNew():
         writer = pd.ExcelWriter('outTest.xlsx')
         self.df_temp.to_excel(writer, 'Temp', index=True)
         self.df_score.to_excel(writer, 'Score', index = True)
-        self.df_score.to_excel(writer, 'Rate', index=True)
+        df_rate.to_excel(writer, 'Rate', index=True)
         writer.save()
+
+        #find the ratebound outside now
+        data = w.wsd(self.s_info_code, "rate_ratebond,latestissurercreditrating2", "ED0Y", time.strftime("%Y%m%d", time.localtime()), "ratingAgency=101;type=1;Period=Y;Days=Alldays").Data
+        df_rate_outside = pd.DataFrame(data = data, columns = ["外部最新评级"], index=["债项", "主体"])
+        print(df_rate_outside)
 
         return df_rate
 
