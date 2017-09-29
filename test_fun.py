@@ -49,6 +49,7 @@ myfun = BondRatingNew()
 # myfun.PastData("031780001.IB")
 
 
+
 ScoringCriterionTable = pd.read_excel("Table1.xlsx")
 OtherScore = pd.read_excel("OtherScore.xlsx")
 
@@ -56,7 +57,7 @@ myfun.score(ScoringCriterionTable, OtherScore)
 
 WeightTable = pd.read_excel("Table2.xlsx")
 print(myfun.rate(WeightTable))
-
+print(myfun.df_RawData, myfun.df_temp, myfun.df_score)
 
 
 
